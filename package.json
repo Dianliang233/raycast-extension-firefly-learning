@@ -1,0 +1,70 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "firefly-learning",
+  "title": "Firefly Learning",
+  "owner": "ucs",
+  "description": "View Firefly tasks, resources and bookmarks",
+  "icon": "command-icon.png",
+  "categories": [
+    "Productivity",
+    "Other"
+  ],
+  "author": "dianliang233",
+  "license": "MIT",
+  "type": "module",
+  "commands": [
+    {
+      "name": "account",
+      "title": "View Account Info",
+      "subtitle": "Firefly",
+      "description": "View Firefly account information and login",
+      "mode": "view"
+    },
+    {
+      "name": "task",
+      "title": "View Tasks",
+      "subtitle": "Firefly",
+      "description": "View Firefly tasks assigned to you",
+      "mode": "view"
+    },
+    {
+      "name": "resources",
+      "title": "View Resources Pages",
+      "subtitle": "Firefly",
+      "description": "View Firefly resources pages",
+      "mode": "view"
+    },
+    {
+      "name": "bookmark",
+      "title": "View Bookmarked Pages",
+      "subtitle": "Firefly",
+      "description": "View pages you bookmarked/someone bookmarked for you on Firefly",
+      "mode": "view"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.63.0",
+    "@raycast/utils": "^1.10.1",
+    "@types/got": "^9.6.12",
+    "@types/turndown": "^5.0.4",
+    "cheerio": "^1.0.0-rc.12",
+    "got": "^14.0.0",
+    "node-html-markdown": "^1.3.0",
+    "turndown": "github:domchristie/turndown"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.6",
+    "@types/node": "20.8.10",
+    "@types/react": "18.2.27",
+    "eslint": "^8.51.0",
+    "prettier": "^3.0.3",
+    "typescript": "^5.2.2"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
