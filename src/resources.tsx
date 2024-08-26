@@ -18,7 +18,7 @@ export default function Command(propsRaw?: { url: string; section: string | null
     url: '/dashboard',
     section: null,
     title: 'Dashboard',
-    pinned: undefined,
+    pinned: [],
     ...propsRaw,
   }
   const { data: store1, isLoading: isLoading1 } = usePromise(storage)
