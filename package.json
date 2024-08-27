@@ -45,7 +45,6 @@
   "dependencies": {
     "@raycast/api": "^1.81.0",
     "@raycast/utils": "^1.16.5",
-    "@types/got": "^9.6.12",
     "@types/turndown": "^5.0.5",
     "cheerio": "^1.0.0",
     "got": "^14.4.2",

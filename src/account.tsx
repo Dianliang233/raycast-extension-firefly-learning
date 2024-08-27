@@ -1,6 +1,7 @@
 import {
   Action,
   ActionPanel,
+  Alert,
   Color,
   Detail,
   Form,
@@ -13,7 +14,7 @@ import {
 } from '@raycast/api'
 import { usePromise } from '@raycast/utils'
 import { randomUUID } from 'crypto'
-import storage, { Storage } from './util/storage'
+import storage, { Storage } from './util/storage.js'
 import fs from 'fs'
 import { ReactElement, useState } from 'react'
 import * as cheerio from 'cheerio'
@@ -58,6 +59,14 @@ export default function Command() {
                   if (
                     await confirmAlert({
                       title: 'Are you sure you want to log out?',
+                      icon: {
+                        source: Icon.Warning,
+                        tintColor: Color.Red,
+                      },
+                      primaryAction: {
+                        title: 'Yes',
+                        style: Alert.ActionStyle.Destructive,
+                      },
                     })
                   ) {
                     await LocalStorage.removeItem('account')

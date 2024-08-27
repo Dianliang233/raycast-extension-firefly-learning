@@ -1,7 +1,7 @@
 import { Action, ActionPanel, Icon, Keyboard, List, LocalStorage } from '@raycast/api'
 import { usePromise, useCachedPromise } from '@raycast/utils'
 import got from 'got'
-import storage, { Storage } from './util/storage'
+import storage, { Storage } from './util/storage.js'
 import * as cheerio from 'cheerio'
 import { useState } from 'react'
 

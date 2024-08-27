@@ -1,8 +1,21 @@
-import { Action, ActionPanel, Color, Detail, Icon, List } from '@raycast/api'
-import { usePromise, useCachedPromise, useCachedState, getAvatarIcon } from '@raycast/utils'
+import {
+  Action,
+  ActionPanel,
+  Color,
+  Detail,
+  Form,
+  Icon,
+  Keyboard,
+  List,
+  open,
+  showToast,
+  Toast,
+  useNavigation,
+} from '@raycast/api'
+import { usePromise, useCachedPromise, useCachedState, getAvatarIcon, showFailureToast, useForm } from '@raycast/utils'
 import got from 'got'
-import storage, { Storage } from './util/storage'
-import dateFormat from './util/dateFormat'
+import storage, { Storage } from './util/storage.js'
+import dateFormat from './util/dateFormat.js'
 import * as cheerio from 'cheerio'
 import { NodeHtmlMarkdown } from 'node-html-markdown'
 
@@ -12,9 +25,11 @@ export default function CommandWrapper() {
   return <Command store={store} />
 }
 
+let rootRevalidate: () => void
+
 function Command({ store }: Readonly<{ store: Storage }>) {
   const [filter, setFilter] = useCachedState('filter', 'AllIncludingArchived')
-  const { data, isLoading } = useCachedPromise(
+  const { data, isLoading, revalidate } = useCachedPromise(
     async (filter: string) => {
       const all = [] as Item[]
       let page = 0
@@ -49,6 +64,7 @@ function Command({ store }: Readonly<{ store: Storage }>) {
     },
     [filter],
   )
+  rootRevalidate = revalidate
 
   const toDo = (data ?? [])
     .filter((item) => !(item.isDone || item.archived || item.isExcused))
@@ -222,8 +238,14 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
         }}
       />
       <Detail.Metadata.Label title="Set to" text={item.addressees.map((a) => a.name).join(', ')} />
+
+      <Detail.Metadata.Separator />
+
       <Detail.Metadata.Label title="Set on" text={dateFormat(new Date(item.setDate))} />
       <Detail.Metadata.Label title="Due on" text={dateFormat(new Date(item.dueDate))} />
+
+      <Detail.Metadata.Separator />
+
       <Detail.Metadata.Label
         title={item.mark.isMarked ? (item.mark.mark ? 'Mark' : item.mark.grade ? 'Grade' : 'Marked') : 'Marked'}
         icon={
@@ -251,13 +273,16 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
             .join(', ') || 'None'
         }
       />
+
+      <Detail.Metadata.Separator />
+
       <Detail.Metadata.Label title="ID" text={item.id.toString()} />
     </>
   )
 }
 
 function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }>) {
-  const { data, isLoading } = useCachedPromise(
+  const { data, isLoading, revalidate } = useCachedPromise(
     async (item: Item) => {
       const $ = cheerio.load(
         (
@@ -289,6 +314,43 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
     },
   )
 
+  function markAs(status: 'done' | 'undone', item: Item) {
+    return async () => {
+      await showToast({ title: 'Updating task' })
+      try {
+        await got.post(
+          `${store.instanceUrl}/_api/1.0/tasks/${item.id}/responses?ffauth_device_id=${store.deviceId}&ffauth_secret=${store.account.secret}`,
+          {
+            form: {
+              data: JSON.stringify({
+                recipient: { type: 'user', guid: (await storage()).account.guid },
+                event: {
+                  type: `mark-as-${status}`,
+                  feedback: '',
+                  sent: new Date().toISOString(),
+                  author: (await storage()).account.guid,
+                },
+              }),
+            },
+          },
+        )
+      } catch (error) {
+        if (item.fileSubmissionRequired) {
+          await showFailureToast(error, {
+            title: 'Operation failed',
+            message: 'This task requires a file submission.',
+            primaryAction: {
+              title: 'Open in browser',
+              onAction: () => open(`${store.instanceUrl}/set-tasks/${item.id}`),
+            },
+          })
+        }
+      }
+      revalidate()
+      rootRevalidate()
+    }
+  }
+
   return (
     <Detail
       isLoading={isLoading}
@@ -296,15 +358,84 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
       actions={
         <ActionPanel>
           <Action.OpenInBrowser url={`${store.instanceUrl}/set-tasks/${item.id}`} />
-          <Action.CopyToClipboard title={`Copy URL`} content={`${store.instanceUrl}/set-tasks/${item.id}`} />
+          {item.isDone ? (
+            <Action title="Mark as To Do" icon={Icon.XMarkCircle} onAction={markAs('undone', item)} />
+          ) : (
+            <Action title="Mark as Done" icon={Icon.CheckCircle} onAction={markAs('done', item)} />
+          )}
+          <Action.Push title="Send a Comment" icon={Icon.Message} target={<CommentTask item={item} store={store} />} />
+          <Action.CopyToClipboard
+            title="Copy URL"
+            content={`${store.instanceUrl}/set-tasks/${item.id}`}
+            shortcut={Keyboard.Shortcut.Common.Copy}
+          />
         </ActionPanel>
       }
       metadata={
         <Detail.Metadata>
+          {data?.task?.task?.attachments && data?.task?.task?.attachments.length > 0 && (
+            <>
+              <Detail.Metadata.TagList title="Attachments">
+                {data?.task?.task?.attachments.map((attachment: any) => (
+                  <Detail.Metadata.TagList.Item
+                    key={attachment.id}
+                    text={attachment.fileName}
+                    icon={Icon.Paperclip}
+                    onAction={() => open(`${store.instanceUrl}/_api/1.0/tasks/${item.id}/attachments/${attachment.id}`)}
+                  />
+                ))}
+              </Detail.Metadata.TagList>
+              <Detail.Metadata.Separator />
+            </>
+          )}
+
           <TaskDetailMetadata item={item} Detail={Detail} />
         </Detail.Metadata>
       }
     />
+  )
+}
+
+function CommentTask({ item, store }: Readonly<{ item: Item; store: Storage }>) {
+  const { pop } = useNavigation()
+  const { handleSubmit, itemProps } = useForm<{ message: string }>({
+    async onSubmit(values) {
+      showToast({
+        style: Toast.Style.Success,
+        title: 'Message sent',
+      })
+
+      await got.post(
+        `${store.instanceUrl}/_api/1.0/tasks/${item.id}/responses?ffauth_device_id=${store.deviceId}&ffauth_secret=${store.account.secret}`,
+        {
+          form: {
+            data: JSON.stringify({
+              recipient: { type: 'user', guid: (await storage()).account.guid },
+              event: {
+                type: 'comment',
+                feedback: '',
+                message: values.message,
+                sent: new Date().toISOString(),
+                author: (await storage()).account.guid,
+              },
+            }),
+          },
+        },
+      )
+      pop()
+    },
+  })
+
+  return (
+    <Form
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm title="Submit" onSubmit={handleSubmit} />
+        </ActionPanel>
+      }
+    >
+      <Form.TextArea title="Message" {...itemProps.message} />
+    </Form>
   )
 }
 

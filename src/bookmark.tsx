@@ -1,7 +1,7 @@
 import { Action, ActionPanel, List } from '@raycast/api'
 import { usePromise, useCachedPromise, getAvatarIcon } from '@raycast/utils'
 import got from 'got'
-import storage, { Storage } from './util/storage'
+import storage, { Storage } from './util/storage.js'
 
 interface Item {
   simple_url: string
