@@ -121,7 +121,19 @@ function TaskItem({ item, store }: Readonly<{ item: Item; store: Storage }>) {
       id={item.id.toString()}
       keywords={[item.id.toString(), item.title, item.setter.name, ...item.addressees.map((a) => a.name)]}
       accessories={[
-        ...(item.isDone ? [] : [{ tag: dateFormat(new Date(item.dueDate), false, true, 'short') }]),
+        ...(item.isDone
+          ? []
+          : [
+              {
+                tag: {
+                  value: dateFormat(new Date(item.dueDate), false, true, 'short'),
+                  color:
+                    Math.floor((new Date(item.dueDate).getTime() - Date.now()) / 1000 / 60 / 60 / 24) + 1 < 0
+                      ? Color.Red
+                      : undefined,
+                },
+              },
+            ]),
         ...(item.isDone
           ? []
           : item.isUnread && isReallyUnread
@@ -129,20 +141,26 @@ function TaskItem({ item, store }: Readonly<{ item: Item; store: Storage }>) {
             : []),
       ]}
       icon={
-        item.isDone
-          ? {
-              source: Icon.CheckCircle,
-              tintColor: Color.Green,
-            }
-          : Math.floor((new Date(item.dueDate).getTime() - Date.now()) / 1000 / 60 / 60 / 24) + 1 < 0
+        item.archived
+          ? { source: Icon.Tray, tintColor: Color.SecondaryText }
+          : item.isDone
             ? {
-                source: Icon.XMarkCircle,
-                tintColor: Color.Red,
+                source: Icon.CheckCircle,
+                tintColor: Color.Green,
               }
-            : {
-                source: Icon.Circle,
-                tintColor: Color.SecondaryText,
-              }
+            : item.isExcused
+              ? { source: Icon.CheckCircle, tintColor: Color.Magenta }
+              : item.isResubmissionRequired
+                ? { source: Icon.Repeat, tintColor: Color.Red }
+                : Math.floor((new Date(item.dueDate).getTime() - Date.now()) / 1000 / 60 / 60 / 24) + 1 < 0
+                  ? {
+                      source: Icon.XMarkCircle,
+                      tintColor: Color.Red,
+                    }
+                  : {
+                      source: Icon.Circle,
+                      tintColor: Color.SecondaryText,
+                    }
       }
       detail={
         <List.Item.Detail
@@ -217,6 +235,15 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
             tintColor: Color.Red,
           }}
         />
+      ) : Math.floor((new Date(item.dueDate).getTime() - Date.now()) / 1000 / 60 / 60 / 24) + 1 < 0 ? (
+        <Detail.Metadata.Label
+          title="Status"
+          text="Overdue"
+          icon={{
+            source: Icon.Circle,
+            tintColor: Color.Red,
+          }}
+        />
       ) : (
         <Detail.Metadata.Label
           title="Status"
@@ -270,7 +297,7 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
         text={
           [item.fileSubmissionRequired && 'File Required', item.descriptionContainsQuestions && 'Online Worksheet']
             .filter((i) => i)
-            .join(', ') || 'None'
+            .join(', ') || 'No Requirement'
         }
       />
 
@@ -434,6 +461,11 @@ function CommentTask({ item, store }: Readonly<{ item: Item; store: Storage }>) 
         </ActionPanel>
       }
     >
+      <Form.Description title="Task" text={item.title} />
+      <Form.Description title="Recipient" text={item.setter.name} />
+
+      <Form.Separator />
+
       <Form.TextArea title="Message" {...itemProps.message} />
     </Form>
   )

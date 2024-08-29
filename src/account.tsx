@@ -98,6 +98,7 @@ export default function Command() {
         </List.Section>
         <List.Section title="Debug">
           <List.Item title="Device ID" subtitle={store.deviceId} actions={<Actions content={store.deviceId} />} />
+          <List.Item title="GUID" subtitle={store.account.guid} actions={<Actions content={store.account.guid} />} />
           <List.Item
             title="Secret"
             subtitle={showSecret ? store.account.secret : '••••••••••'}
