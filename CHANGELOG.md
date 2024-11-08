@@ -1,5 +1,7 @@
 # Firefly Student Changelog
 
+## [Crash fix] - 2024-11-08
+
 ## [Misc bug fixes] - 2024-11-08
 
 - Pagination.

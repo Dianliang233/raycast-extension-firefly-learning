@@ -309,18 +309,20 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
 
 function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }>) {
   useEffect(() => {
-    got.post(
-      `${store?.instanceUrl}/_api/1.0/tasks/17202/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+    got
+      .post(
+        `${store?.instanceUrl}/_api/1.0/tasks/17202/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            data: JSON.stringify({ recipient: { type: 'user', guid: store?.account.guid } }),
+          }).toString(),
         },
-        body: new URLSearchParams({
-          data: JSON.stringify({ recipient: { type: 'user', guid: store?.account.guid } }),
-        }),
-      },
-    )
-  }, [])
+      )
+      .then(() => {})
+  }, [item])
   const { data, isLoading, revalidate } = useCachedPromise(
     async (item: Item) => {
       const $ = cheerio.load(
