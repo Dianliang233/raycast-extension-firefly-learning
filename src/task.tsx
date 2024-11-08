@@ -18,6 +18,7 @@ import storage, { Storage } from './util/storage.js'
 import dateFormat from './util/dateFormat.js'
 import * as cheerio from 'cheerio'
 import { NodeHtmlMarkdown } from 'node-html-markdown'
+import { useEffect } from 'react'
 
 export default function CommandWrapper() {
   const { data: store } = usePromise(storage)
@@ -29,14 +30,11 @@ let rootRevalidate: () => void
 
 function Command({ store }: Readonly<{ store: Storage }>) {
   const [filter, setFilter] = useCachedState('filter', 'AllIncludingArchived')
-  const { data, isLoading, revalidate } = useCachedPromise(
-    async (filter: string) => {
-      const all = [] as Item[]
-      let page = 0
-      let res
-
-      do {
-        res = JSON.parse(
+  const { data, pagination, isLoading, revalidate } = useCachedPromise(
+    (filter: string) =>
+      async ({ page }: { page: number }) => {
+        const all = [] as Item[]
+        const res = JSON.parse(
           (
             await got.post(
               `${store?.instanceUrl}/api/v2/taskListing/view/student/tasks/all/filterBy?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
@@ -48,20 +46,19 @@ function Command({ store }: Readonly<{ store: Storage }>) {
                   archiveStatus: 'All',
                   completionStatus: filter,
                   ownerType: 'OnlySetters',
-                  page: page,
-                  pageSize: 100,
+                  page,
+                  pageSize: 50,
+                  sortingCriteria: [{ column: 'DueDate', order: 'Descending' }],
                 }),
               },
             )
           ).body,
         )
+        all.push(...res?.items)
 
-        all.push(...res.items)
-        page++
-      } while (res?.aggregateOffsets.toFfIndex !== res?.totalCount)
-
-      return all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-    },
+        const data = all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+        return { data, hasMore: res?.aggregateOffsets.toFfIndex !== res?.totalCount, pageSize: res?.totalCount }
+      },
     [filter],
   )
   rootRevalidate = revalidate
@@ -77,6 +74,7 @@ function Command({ store }: Readonly<{ store: Storage }>) {
     <List
       isShowingDetail
       isLoading={isLoading}
+      pagination={pagination}
       searchBarAccessory={
         <List.Dropdown
           tooltip="Filter"
@@ -107,6 +105,10 @@ function Command({ store }: Readonly<{ store: Storage }>) {
             <TaskItem key={item.id} item={item} store={store} />
           ))}
         </List.Section>
+      )}
+
+      {toDo.length === 0 && done.length === 0 && (
+        <List.EmptyView icon={{ source: 'https://placecats.com/500/500' }} title="No tasks found" />
       )}
     </List>
   )
@@ -185,9 +187,6 @@ function TaskItem({ item, store }: Readonly<{ item: Item; store: Storage }>) {
 }
 
 function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typeof List.Item.Detail }>) {
-  // console.log(`https://ulinkcn.fireflycloud.net.cn/api/v3/profilepicture?guid=${item.setter.guid}`)
-  // console.log(item.mark)
-
   return (
     <>
       {item.isPersonalTask && (
@@ -309,6 +308,19 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
 }
 
 function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }>) {
+  useEffect(() => {
+    got.post(
+      `${store?.instanceUrl}/_api/1.0/tasks/17202/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          data: JSON.stringify({ recipient: { type: 'user', guid: store?.account.guid } }),
+        }),
+      },
+    )
+  }, [])
   const { data, isLoading, revalidate } = useCachedPromise(
     async (item: Item) => {
       const $ = cheerio.load(
@@ -324,10 +336,6 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
       return state
     },
     [item],
-  )
-
-  console.log(
-    `${store?.instanceUrl}/set-tasks/${item.id}?view=xml&ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
   )
 
   const task = (!isLoading ? NodeHtmlMarkdown.translate(data?.task?.task?.description, {}) : '').replace(

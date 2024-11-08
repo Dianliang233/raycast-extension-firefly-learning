@@ -1,5 +1,10 @@
 # Firefly Student Changelog
 
+## [Misc bug fixes] - 2024-11-08
+
+- Pagination.
+  Better performance loading tasks.
+
 ## [Misc bug fixes] - 2024-08-29
 
 - Misc bug fixes
