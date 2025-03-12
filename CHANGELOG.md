@@ -1,6 +1,6 @@
 # Firefly Student Changelog
 
-## [Fix mark as read] - 2024-11-08
+## [Fix mark as read] - 2025-03-12
 
 ## [Crash fix] - 2024-11-08
 
