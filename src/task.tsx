@@ -311,7 +311,7 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
   useEffect(() => {
     got
       .post(
-        `${store?.instanceUrl}/_api/1.0/tasks/17202/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
+        `${store?.instanceUrl}/_api/1.0/tasks/${item.id}/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
         {
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
