@@ -1,5 +1,7 @@
 # Firefly Student Changelog
 
+## [Allow task search to search all of task history] - 2025-03-13
+
 ## [New Firefly logo] - 2025-03-12
 
 ## [Fix mark as read] - 2025-03-12

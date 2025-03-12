@@ -18,7 +18,7 @@ import storage, { Storage } from './util/storage.js'
 import dateFormat from './util/dateFormat.js'
 import * as cheerio from 'cheerio'
 import { NodeHtmlMarkdown } from 'node-html-markdown'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export default function CommandWrapper() {
   const { data: store } = usePromise(storage)
@@ -30,6 +30,10 @@ let rootRevalidate: () => void
 
 function Command({ store }: Readonly<{ store: Storage }>) {
   const [filter, setFilter] = useCachedState('filter', 'AllIncludingArchived')
+  const [searchText, setSearchText] = useCachedState('searchText', '')
+  const [searchResults, setSearchResults] = useCachedState<Item[]>('searchResults', [])
+  const debouncedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const { data, pagination, isLoading, revalidate } = useCachedPromise(
     (filter: string) =>
       async ({ page }: { page: number }) => {
@@ -63,18 +67,65 @@ function Command({ store }: Readonly<{ store: Storage }>) {
   )
   rootRevalidate = revalidate
 
-  const toDo = (data ?? [])
+  // Use search results when a search term is present, otherwise use normal data.
+  const displayedData = searchText.length > 0 ? searchResults : (data ?? [])
+  const toDo = displayedData
     .filter((item) => !(item.isDone || item.archived || item.isExcused))
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-  const done = (data ?? [])
+  const done = displayedData
     .filter((item) => item.isDone || item.archived || item.isExcused)
     .sort((b, a) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+
+  async function executeSearch(text: string) {
+    if (text.trim().length === 0) {
+      setSearchResults([])
+      return
+    }
+    await showToast({ title: 'Searching tasks...', style: Toast.Style.Animated })
+    let page = 1
+    let results: Item[] = []
+    let hasMore = true
+    while (hasMore) {
+      const response = await got.post(
+        `${store.instanceUrl}/api/v2/taskListing/view/student/tasks/all/filterBy?ffauth_device_id=${store.deviceId}&ffauth_secret=${store.account.secret}`,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            archiveStatus: 'All',
+            completionStatus: filter,
+            ownerType: 'OnlySetters',
+            page,
+            pageSize: 100,
+            sortingCriteria: [{ column: 'DueDate', order: 'Descending' }],
+          }),
+        },
+      )
+      const resJson = JSON.parse(response.body)
+      if (resJson?.items) {
+        results.push(...resJson.items.filter((item: Item) => item.title.toLowerCase().includes(text.toLowerCase())))
+        setSearchResults([...results]) // update search results incrementally
+      }
+      hasMore = resJson?.aggregateOffsets.toFfIndex !== resJson?.totalCount
+      page++
+    }
+    await showToast({ title: `Found ${results.length} tasks`, style: Toast.Style.Success })
+  }
+
+  function handleSearchTextChange(text: string) {
+    setSearchText(text)
+    if (debouncedTimer.current) clearTimeout(debouncedTimer.current)
+    debouncedTimer.current = setTimeout(() => {
+      executeSearch(text)
+    }, 300)
+  }
 
   return (
     <List
       isShowingDetail
       isLoading={isLoading}
       pagination={pagination}
+      filtering={true}
+      onSearchTextChange={handleSearchTextChange}
       searchBarAccessory={
         <List.Dropdown
           tooltip="Filter"
@@ -323,6 +374,7 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
       )
       .then(() => {})
   }, [item])
+
   const { data, isLoading, revalidate } = useCachedPromise(
     async (item: Item) => {
       const $ = cheerio.load(
