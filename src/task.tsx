@@ -54,7 +54,7 @@ function Command({ store }: Readonly<{ store: Storage }>) {
             )
           ).body,
         )
-        all.push(...res?.items)
+        if (res?.items) all.push(...res.items)
 
         const data = all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
         return { data, hasMore: res?.aggregateOffsets.toFfIndex !== res?.totalCount, pageSize: res?.totalCount }
@@ -335,12 +335,12 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
       )
 
       const state = JSON.parse($('task-details-react-component').attr('initial-state') ?? '{}')
-      return state
+      return state as TaskDetail
     },
     [item],
   )
 
-  const task = (!isLoading ? NodeHtmlMarkdown.translate(data?.task?.task?.description, {}) : '').replace(
+  const task = (!isLoading ? NodeHtmlMarkdown.translate(data?.task.task.description as string, {}) : '').replace(
     /\[(.*?)\]\((.+?)\)/g,
     (match, text, url) => {
       if (url.startsWith('http')) return match
@@ -396,7 +396,7 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
         <ActionPanel>
           <Action.OpenInBrowser url={`${store.instanceUrl}/set-tasks/${item.id}`} />
           {item.isDone ? (
-            <Action title="Mark as To Do" icon={Icon.XMarkCircle} onAction={markAs('undone', item)} />
+            <Action title="Mark as to Do" icon={Icon.XMarkCircle} onAction={markAs('undone', item)} />
           ) : (
             <Action title="Mark as Done" icon={Icon.CheckCircle} onAction={markAs('done', item)} />
           )}
@@ -413,7 +413,7 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
           {data?.task?.task?.attachments && data?.task?.task?.attachments.length > 0 && (
             <>
               <Detail.Metadata.TagList title="Attachments">
-                {data?.task?.task?.attachments.map((attachment: any) => (
+                {data?.task?.task?.attachments.map((attachment) => (
                   <Detail.Metadata.TagList.Item
                     key={attachment.id}
                     text={attachment.fileName}
@@ -523,4 +523,86 @@ interface Item {
   taskSource: string
   altLink: null
   classes: null
+}
+
+interface TaskDetail {
+  task: {
+    task: {
+      id: number
+      title: string
+      displayTitle: string
+      setDateUtc: [string]
+      dueDateUtc: [string]
+      description: string
+      descriptionContainsQuestions: boolean
+      descriptionPageUrl: string
+      descriptionPageId: [30683]
+      attachments: {
+        id: number
+        type: string
+        fileName: string
+      }[]
+      pageId: string
+      archived: boolean
+      setterGuid: string
+      taskType: string
+      fileSubmissionRequired: boolean
+      addressees: {
+        displayName: string
+        pictureHref: string
+        type: string
+        guid: string
+      }[]
+      releaseMode: string
+    }
+    setter: {
+      name: string
+      sortKey: string
+    }
+  }
+  loggedInUser: {
+    guid: string
+    role: string
+    name: string
+    isAdmin: boolean
+  }
+  renderRestrictedView: boolean
+  responses: {
+    responses: {
+      recipient: {
+        type: string
+        guid: string
+      }
+      latestVersionId: number
+      events: [
+        {
+          description: {
+            type: string
+            taskTitle: string
+            eventVersionId: number
+            author: string
+            eventGuid: null
+            sent: string
+          }
+          state: {
+            released: boolean
+            releasedAt: string
+            canDelete: boolean
+            canEdit: boolean
+            edited: boolean
+            deleted: boolean
+            read: boolean
+          }
+        },
+      ]
+    }[]
+
+    users: Record<
+      string,
+      {
+        name: string
+        sortKey: string
+      }
+    >
+  }
 }
