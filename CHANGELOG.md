@@ -1,5 +1,7 @@
 # Firefly Student Changelog
 
+## [New Firefly logo] - 2025-03-12
+
 ## [Fix mark as read] - 2025-03-12
 
 ## [Crash fix] - 2024-11-08
