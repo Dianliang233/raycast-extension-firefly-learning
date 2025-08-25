@@ -28,7 +28,7 @@ async function allItems() {
   Object.keys(raw).forEach((key) => {
     try {
       raw[key] = JSON.parse(raw[key])
-    } catch (error) {
+    } catch {
       // ignore
     }
   })

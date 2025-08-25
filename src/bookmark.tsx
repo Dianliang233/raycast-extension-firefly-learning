@@ -65,7 +65,14 @@ function Command(props: { store: Storage }) {
       },
     )
 
-    const data: Item[] = (await res.json()).data.users[0].bookmarks
+    const json = (await res.json()) as {
+      data: {
+        users: Array<{
+          bookmarks: Item[]
+        }>
+      }
+    }
+    const data: Item[] = json.data.users[0].bookmarks
 
     return data.sort((a, b) => (a.position > b.position ? 1 : -1))
   })

@@ -43,21 +43,20 @@
     }
   ],
   "dependencies": {
-    "@raycast/api": "^1.93.2",
-    "@raycast/utils": "^1.19.1",
+    "@raycast/api": "^1.102.5",
+    "@raycast/utils": "2.2.1",
     "@types/turndown": "^5.0.5",
-    "cheerio": "^1.0.0",
-    "got": "^14.4.6",
+    "cheerio": "^1.1.2",
     "node-html-markdown": "^1.3.0",
     "turndown": "github:domchristie/turndown"
   },
   "devDependencies": {
-    "@raycast/eslint-config": "^1.0.11",
+    "@raycast/eslint-config": "^2.0.4",
     "@types/node": "22.13.10",
-    "@types/react": "18.3.4",
-    "eslint": "^8.57.1",
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
+    "@types/react": "19.1.11",
+    "eslint": "^9.34.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2"
   },
   "scripts": {
     "build": "ray build -e dist",
@@ -65,5 +64,6 @@
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "publish": "npx @raycast/api@latest publish"
-  }
+  },
+  "packageManager": "pnpm@10.10.0+sha512.d615db246fe70f25dcfea6d8d73dee782ce23e2245e3c4f6f888249fb568149318637dca73c2c5c8ef2a4ca0d5657fb9567188bfab47f566d1ee6ce987815c39"
 }

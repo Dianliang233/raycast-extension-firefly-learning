@@ -114,7 +114,9 @@ export function Command(propsRaw: {
         <>
           {props.url === '/dashboard' && props.section === null && pinned?.length !== 0 && (
             <List.Section title="Pinned">
-              {pinned?.map((item) => <ResourceItem key={item.id} {...{ item, store, pinned, setPinned }} />)}
+              {pinned?.map((item) => (
+                <ResourceItem key={item.id} {...{ item, store, pinned, setPinned }} />
+              ))}
             </List.Section>
           )}
           <List.Section title={props.title}>

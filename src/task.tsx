@@ -63,7 +63,13 @@ function Command({ store }: Readonly<{ store: Storage }>) {
             }),
           },
         )
-        const res = await response.json()
+        const res = (await response.json()) as {
+          items: Item[]
+          aggregateOffsets: {
+            toFfIndex: number
+          }
+          totalCount: number
+        }
         if (res?.items) all.push(...res.items)
 
         const data = all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -107,7 +113,13 @@ function Command({ store }: Readonly<{ store: Storage }>) {
           }),
         },
       )
-      const resJson = await response.json()
+      const resJson = (await response.json()) as {
+        items: Item[]
+        aggregateOffsets: {
+          toFfIndex: number
+        }
+        totalCount: number
+      }
       if (resJson?.items) {
         results.push(...resJson.items.filter((item: Item) => item.title.toLowerCase().includes(text.toLowerCase())))
         setSearchResults([...results]) // update search results incrementally

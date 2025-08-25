@@ -33,7 +33,7 @@ export default function Command() {
   if (store?.account) {
     const Actions = (props: { children?: ReactElement; content: string | number }) => (
       <ActionPanel>
-        {props.children}
+        {props.children && <>{props.children}</>}
         <Action.CopyToClipboard content={props.content} />
       </ActionPanel>
     )
@@ -230,7 +230,7 @@ function validateUrl(url: string | undefined, setError: (error: string | undefin
   }
   try {
     new URL(url)
-  } catch (e) {
+  } catch {
     setError('Please enter a valid URL')
     return
   }
