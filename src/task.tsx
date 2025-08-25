@@ -12,7 +12,15 @@ import {
   Toast,
   useNavigation,
 } from '@raycast/api'
-import { usePromise, useCachedPromise, useCachedState, getAvatarIcon, showFailureToast, useForm } from '@raycast/utils'
+import {
+  usePromise,
+  useCachedPromise,
+  useCachedState,
+  getAvatarIcon,
+  showFailureToast,
+  useForm,
+  getProgressIcon,
+} from '@raycast/utils'
 import storage, { Storage } from './util/storage.js'
 import dateFormat from './util/dateFormat.js'
 import * as cheerio from 'cheerio'
@@ -326,16 +334,27 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
         title={item.mark.isMarked ? (item.mark.mark ? 'Mark' : item.mark.grade ? 'Grade' : 'Marked') : 'Marked'}
         icon={
           item.mark.isMarked
-            ? item.mark.mark === null && item.mark.grade === null
-              ? Icon.CheckCircle
-              : undefined
+            ? item.mark.mark !== null && item.mark.markMax !== null
+              ? getProgressIcon(
+                  item.mark.mark / item.mark.markMax,
+                  (() => {
+                    const percentage = item.mark.mark / item.mark.markMax
+                    if (percentage >= 0.8) return Color.Green
+                    if (percentage >= 0.7) return Color.Yellow
+                    if (percentage >= 0.6) return Color.Orange
+                    return Color.Red
+                  })(),
+                )
+              : item.mark.grade === null
+                ? Icon.CheckCircle
+                : undefined
             : Icon.XMarkCircle
         }
         text={
           item.mark.isMarked
-            ? item.mark.mark
+            ? item.mark.mark !== null
               ? `${item.mark.mark} / ${item.mark.markMax}${item.mark.grade ? ` (${item.mark.grade})` : ''}`
-              : item.mark.grade
+              : item.mark.grade !== null
                 ? item.mark.grade
                 : 'Marked'
             : undefined

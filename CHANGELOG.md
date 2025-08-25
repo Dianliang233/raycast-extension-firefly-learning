@@ -1,5 +1,7 @@
 # Firefly Student Changelog
 
+## [Use progress icon for marks] - 2025-08-25
+
 ## [Allow task search to search all of task history] - 2025-03-13
 
 ## [New Firefly logo] - 2025-03-12
