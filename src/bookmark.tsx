@@ -1,7 +1,7 @@
 import { Action, ActionPanel, List } from '@raycast/api'
 import { usePromise, useCachedPromise, getAvatarIcon } from '@raycast/utils'
-import got from 'got'
 import storage, { Storage } from './util/storage.js'
+import Account from './account.js'
 
 interface Item {
   simple_url: string
@@ -22,22 +22,23 @@ interface Item {
 export default function CommandWrapper() {
   const { data: store } = usePromise(storage)
   if (!store) return <List isLoading />
+  if (!store?.account?.secret) return <Account />
+
   return <Command store={store} />
 }
 
 function Command(props: { store: Storage }) {
   const { store } = props
   const { data, isLoading } = useCachedPromise(async (): Promise<Item[]> => {
-    const data: Item[] = JSON.parse(
-      (
-        await got.post(
-          `${store?.instanceUrl}/_api/1.0/graphql?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
-          {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-              data: /* GraphQL */ `
+    const res = await fetch(
+      `${store?.instanceUrl}/_api/1.0/graphql?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          data: /* GraphQL */ `
                   query Query {
                     users(guid: "${store.account.guid}") {
                       bookmarks {
@@ -60,11 +61,11 @@ function Command(props: { store: Storage }) {
                     }
                   }
                 `,
-            }).toString(),
-          },
-        )
-      ).body,
-    ).data.users[0].bookmarks
+        }).toString(),
+      },
+    )
+
+    const data: Item[] = (await res.json()).data.users[0].bookmarks
 
     return data.sort((a, b) => (a.position > b.position ? 1 : -1))
   })

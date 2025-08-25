@@ -81,15 +81,19 @@ export default function Command() {
         <List.Section title="Account">
           <List.Item
             title="Username"
-            subtitle={store.account.username}
-            actions={<Actions content={store.account.username} />}
+            subtitle={showSecret ? store.account.username : '••••••••••'}
+            actions={<Actions content={store.account.username}>{ShowSecretAction}</Actions>}
           />
           <List.Item
             title="Full Name"
             subtitle={showSecret ? store.account.fullName : '••••••••••'}
             actions={<Actions content={store.account.fullName}>{ShowSecretAction}</Actions>}
           />
-          <List.Item title="Email" subtitle={store.account.email} actions={<Actions content={store.account.email} />} />
+          <List.Item
+            title="Email"
+            subtitle={showSecret ? store.account.email : '••••••••••'}
+            actions={<Actions content={store.account.email}>{ShowSecretAction}</Actions>}
+          />
           <List.Item
             title="Role"
             subtitle={store.account.role[0].toUpperCase() + store.account.role.slice(1)}

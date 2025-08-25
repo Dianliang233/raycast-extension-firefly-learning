@@ -13,16 +13,18 @@ import {
   useNavigation,
 } from '@raycast/api'
 import { usePromise, useCachedPromise, useCachedState, getAvatarIcon, showFailureToast, useForm } from '@raycast/utils'
-import got from 'got'
 import storage, { Storage } from './util/storage.js'
 import dateFormat from './util/dateFormat.js'
 import * as cheerio from 'cheerio'
 import { NodeHtmlMarkdown } from 'node-html-markdown'
 import { useEffect, useRef } from 'react'
+import Account from './account.js'
 
 export default function CommandWrapper() {
   const { data: store } = usePromise(storage)
   if (!store) return <List isLoading />
+  if (!store?.account?.secret) return <Account />
+
   return <Command store={store} />
 }
 
@@ -38,26 +40,22 @@ function Command({ store }: Readonly<{ store: Storage }>) {
     (filter: string) =>
       async ({ page }: { page: number }) => {
         const all = [] as Item[]
-        const res = JSON.parse(
-          (
-            await got.post(
-              `${store?.instanceUrl}/api/v2/taskListing/view/student/tasks/all/filterBy?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
-              {
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  archiveStatus: 'All',
-                  completionStatus: filter,
-                  ownerType: 'OnlySetters',
-                  page,
-                  pageSize: 50,
-                  sortingCriteria: [{ column: 'DueDate', order: 'Descending' }],
-                }),
-              },
-            )
-          ).body,
+        const response = await fetch(
+          `${store?.instanceUrl}/api/v2/taskListing/view/student/tasks/all/filterBy?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              archiveStatus: 'All',
+              completionStatus: filter,
+              ownerType: 'OnlySetters',
+              page,
+              pageSize: 50,
+              sortingCriteria: [{ column: 'DueDate', order: 'Descending' }],
+            }),
+          },
         )
+        const res = await response.json()
         if (res?.items) all.push(...res.items)
 
         const data = all.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -83,12 +81,13 @@ function Command({ store }: Readonly<{ store: Storage }>) {
     }
     await showToast({ title: 'Searching tasks...', style: Toast.Style.Animated })
     let page = 1
-    let results: Item[] = []
+    const results: Item[] = []
     let hasMore = true
     while (hasMore) {
-      const response = await got.post(
+      const response = await fetch(
         `${store.instanceUrl}/api/v2/taskListing/view/student/tasks/all/filterBy?ffauth_device_id=${store.deviceId}&ffauth_secret=${store.account.secret}`,
         {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             archiveStatus: 'All',
@@ -100,7 +99,7 @@ function Command({ store }: Readonly<{ store: Storage }>) {
           }),
         },
       )
-      const resJson = JSON.parse(response.body)
+      const resJson = await response.json()
       if (resJson?.items) {
         results.push(...resJson.items.filter((item: Item) => item.title.toLowerCase().includes(text.toLowerCase())))
         setSearchResults([...results]) // update search results incrementally
@@ -360,31 +359,25 @@ function TaskDetailMetadata({ item, Detail }: Readonly<{ item: Item; Detail: typ
 
 function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }>) {
   useEffect(() => {
-    got
-      .post(
-        `${store?.instanceUrl}/_api/1.0/tasks/${item.id}/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
-        {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            data: JSON.stringify({ recipient: { type: 'user', guid: store?.account.guid } }),
-          }).toString(),
-        },
-      )
-      .then(() => {})
+    fetch(
+      `${store?.instanceUrl}/_api/1.0/tasks/${item.id}/mark_as_read?ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          data: JSON.stringify({ recipient: { type: 'user', guid: store?.account.guid } }),
+        }).toString(),
+      },
+    ).then(() => {})
   }, [item])
 
   const { data, isLoading, revalidate } = useCachedPromise(
     async (item: Item) => {
-      const $ = cheerio.load(
-        (
-          await got.get(
-            `${store?.instanceUrl}/set-tasks/${item.id}?view=xml&ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
-          )
-        ).body,
-        { xmlMode: true },
+      const response = await fetch(
+        `${store?.instanceUrl}/set-tasks/${item.id}?view=xml&ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
       )
+      const text = await response.text()
+      const $ = cheerio.load(text, { xmlMode: true })
 
       const state = JSON.parse($('task-details-react-component').attr('initial-state') ?? '{}')
       return state as TaskDetail
@@ -407,10 +400,12 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
     return async () => {
       await showToast({ title: 'Updating task' })
       try {
-        await got.post(
+        await fetch(
           `${store.instanceUrl}/_api/1.0/tasks/${item.id}/responses?ffauth_device_id=${store.deviceId}&ffauth_secret=${store.account.secret}`,
           {
-            form: {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
               data: JSON.stringify({
                 recipient: { type: 'user', guid: (await storage()).account.guid },
                 event: {
@@ -420,7 +415,7 @@ function ViewTaskDetail({ item, store }: Readonly<{ item: Item; store: Storage }
                   author: (await storage()).account.guid,
                 },
               }),
-            },
+            }).toString(),
           },
         )
       } catch (error) {
@@ -494,10 +489,12 @@ function CommentTask({ item, store }: Readonly<{ item: Item; store: Storage }>) 
         title: 'Message sent',
       })
 
-      await got.post(
+      await fetch(
         `${store.instanceUrl}/_api/1.0/tasks/${item.id}/responses?ffauth_device_id=${store.deviceId}&ffauth_secret=${store.account.secret}`,
         {
-          form: {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
             data: JSON.stringify({
               recipient: { type: 'user', guid: (await storage()).account.guid },
               event: {
@@ -508,7 +505,7 @@ function CommentTask({ item, store }: Readonly<{ item: Item; store: Storage }>) 
                 author: (await storage()).account.guid,
               },
             }),
-          },
+          }).toString(),
         },
       )
       pop()

@@ -1,9 +1,9 @@
 import { Action, ActionPanel, Icon, Keyboard, List, LocalStorage } from '@raycast/api'
 import { usePromise, useCachedPromise } from '@raycast/utils'
-import got from 'got'
 import storage, { Storage } from './util/storage.js'
 import * as cheerio from 'cheerio'
 import { useState } from 'react'
+import Account from './account.js'
 
 interface Item {
   url: string
@@ -13,7 +13,21 @@ interface Item {
   hasChildren: boolean
 }
 
-export default function Command(propsRaw?: { url: string; section: string | null; title: string; pinned?: Item[] }) {
+export default function CommandWrapper() {
+  const { data: store } = usePromise(storage)
+  if (!store) return <List isLoading />
+  if (!store?.account?.secret) return <Account />
+
+  return <Command store={store} />
+}
+
+export function Command(propsRaw: {
+  url?: string
+  section?: string | null
+  title?: string
+  pinned?: Item[]
+  store: Storage
+}) {
   const props = {
     url: '/dashboard',
     section: null,
@@ -21,8 +35,7 @@ export default function Command(propsRaw?: { url: string; section: string | null
     pinned: [],
     ...propsRaw,
   }
-  const { data: store1, isLoading: isLoading1 } = usePromise(storage)
-  const store = store1!
+  const store = props.store
   const [pinned, setPinned] = useState<Item[] | undefined>(props.pinned)
   if (store?.resource && pinned === undefined) {
     const resource = store.resource || {}
@@ -30,14 +43,11 @@ export default function Command(propsRaw?: { url: string; section: string | null
   }
   const { data, isLoading: isLoading2 } = useCachedPromise(
     async (url: string, section: string | null, store: Storage): Promise<Item[]> => {
-      const $ = cheerio.load(
-        (
-          await got.get(
-            `${store?.instanceUrl}${url}?view=xml&ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
-          )
-        ).body,
-        { xmlMode: true },
+      const res = await fetch(
+        `${store?.instanceUrl}${url}?view=xml&ffauth_device_id=${store?.deviceId}&ffauth_secret=${store?.account.secret}`,
       )
+      const text = await res.text()
+      const $ = cheerio.load(text, { xmlMode: true })
 
       let items
       if (section !== null) {
@@ -91,7 +101,7 @@ export default function Command(propsRaw?: { url: string; section: string | null
 
   return (
     <List
-      isLoading={isLoading1 || isLoading2}
+      isLoading={isLoading2}
       actions={
         store ? (
           <ActionPanel>
@@ -144,7 +154,9 @@ function ResourceItem({
           {item.hasChildren && (
             <Action.Push
               title="View Content"
-              target={<Command title={item.title} url={item.url} section={item.section} pinned={pinned} />}
+              target={
+                <Command title={item.title} url={item.url} section={item.section} pinned={pinned} store={store} />
+              }
             />
           )}
           <Action.OpenInBrowser url={`${store.instanceUrl}/${item.url}`} />
