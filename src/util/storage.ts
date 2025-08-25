@@ -21,6 +21,9 @@ export interface Storage {
       hasChildren: boolean
     }[]
   }
+  taskPreferences: {
+    bankruptcyAt: string | null
+  }
 }
 
 async function allItems() {

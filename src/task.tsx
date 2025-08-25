@@ -7,6 +7,7 @@ import {
   Icon,
   Keyboard,
   List,
+  LocalStorage,
   open,
   showToast,
   Toast,
@@ -83,9 +84,17 @@ function Command({ store }: Readonly<{ store: Storage }>) {
   const displayedData = searchText.length > 0 ? searchResults : (data ?? [])
   const toDo = displayedData
     .filter((item) => !(item.isDone || item.archived || item.isExcused))
+    .filter(
+      (item) =>
+        !store.taskPreferences?.bankruptcyAt || new Date(item.setDate) > new Date(store.taskPreferences.bankruptcyAt),
+    )
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
   const done = displayedData
     .filter((item) => item.isDone || item.archived || item.isExcused)
+    .filter(
+      (item) =>
+        !store.taskPreferences?.bankruptcyAt || new Date(item.setDate) > new Date(store.taskPreferences.bankruptcyAt),
+    )
     .sort((b, a) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
 
   async function executeSearch(text: string) {
@@ -159,6 +168,11 @@ function Command({ store }: Readonly<{ store: Storage }>) {
             <List.Dropdown.Item title="Done" value="DoneOrArchived" />
           </List.Dropdown.Section>
         </List.Dropdown>
+      }
+      actions={
+        <ActionPanel>
+          <Action.Push icon={Icon.Cog} title="Open Task Preferences" target={<TaskPreferences store={store} />} />
+        </ActionPanel>
       }
     >
       {toDo.length !== 0 && (
@@ -245,11 +259,17 @@ function TaskItem({ item, store }: Readonly<{ item: Item; store: Storage }>) {
       }
       actions={
         <ActionPanel>
-          <Action.Push title="View Detail" target={<ViewTaskDetail item={item} store={store} />} />
+          <Action.Push
+            icon={Icon.AppWindowList}
+            title="View Detail"
+            target={<ViewTaskDetail item={item} store={store} />}
+          />
           <Action.OpenInBrowser
             url={`${store.instanceUrl}/set-tasks/${item.id}`}
             onOpen={() => setIsReallyUnread(false)}
           />
+
+          <Action.Push icon={Icon.Cog} title="Open Task Preferences" target={<TaskPreferences store={store} />} />
         </ActionPanel>
       }
     />
@@ -557,6 +577,33 @@ function CommentTask({ item, store }: Readonly<{ item: Item; store: Storage }>) 
       <Form.Separator />
 
       <Form.TextArea title="Message" {...itemProps.message} />
+    </Form>
+  )
+}
+
+function TaskPreferences({ store }: { store: Storage }) {
+  const { pop } = useNavigation()
+  return (
+    <Form
+      actions={
+        <ActionPanel>
+          <Action.SubmitForm
+            title="Submit"
+            onSubmit={async (values) => {
+              await LocalStorage.setItem('taskPreferences', JSON.stringify(values))
+              pop()
+            }}
+          />
+        </ActionPanel>
+      }
+    >
+      <Form.Description text="It is supported to declare Task Bankruptcy. If a Bankruptcy is declared, all tasks assigned before this date will be hidden." />
+      <Form.DatePicker
+        id="bankruptcyAt"
+        title="Task Bankruptcy"
+        type={Form.DatePicker.Type.Date}
+        defaultValue={store.taskPreferences.bankruptcyAt ? new Date(store.taskPreferences.bankruptcyAt) : undefined}
+      />
     </Form>
   )
 }

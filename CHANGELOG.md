@@ -1,5 +1,7 @@
 # Firefly Student Changelog
 
+## [Task bankruptcy] - 2025-08-25
+
 ## [Use progress icon for marks] - 2025-08-25
 
 ## [Allow task search to search all of task history] - 2025-03-13
